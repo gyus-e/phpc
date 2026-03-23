@@ -1,8 +1,8 @@
 CC = nvcc
 
-all: sommaarray.exe
+all: a.exe
 
-sommaarray.exe: sommaarray.cu
+a.exe: sommaarray.cu
 	$(CC) sommaarray.cu
 
 clean:
