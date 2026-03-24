@@ -31,23 +31,8 @@ const int WARP_SIZE = 32;
  * A kernel launch is an operation which starts a kernel running, usually from the CPU. 
  * Kernels are functions with a void return type.
  */
-__global__ void vecAdd(float *A, float *B, float *C) {
-  /**
-  * threadIdx gives the index of a thread within its thread block. Each thread in a thread block will have a different index. 
-  * blockDim gives the dimensions of the thread block, which was specified in the execution configuration of the kernel launch.
-  * blockIdx gives the index of a thread block within the grid. Each thread block will have a different index.
-  * gridDim gives the dimensions of the grid, which was specified in the execution configuration when the kernel was launched.
-  * Each of these intrinsics is a 3-component vector with a .x, .y, and .z member. 
-  * Dimensions not specified by a launch configuration will default to 1. 
-  * threadIdx and blockIdx are zero indexed
-  */
+__global__ void vecAdd(float *A, float *B, float *C);
 
-  // calculate which element this thread is responsible for computing
-  int workIndex = threadIdx.x + blockDim.x * blockIdx.x;
-
-  // Perform computation
-  C[workIndex] = A[workIndex] + B[workIndex];
-}
 
 int main() {
   float *h_A, *h_B, *h_C;
@@ -79,7 +64,7 @@ int main() {
    * This is called the execution configuration.
    * Different invocations of the same kernel may use different execution configurations, 
    * such as a different number of threads or thread blocks.
-   * Triple chevron notation is a CUDA C++ Language Extension which is used to launch kernels. 
+   * Triple chevron ("<<<", ">>>") notation is a CUDA C++ Language Extension which is used to launch kernels. 
    * Execution configuration parameters are specified as a comma separated list inside the chevrons, 
    * similar to parameters to a function call. 
    * The first two parameters to the triple chevron notation are the grid dimensions and the thread block dimensions, respectively. 
@@ -109,3 +94,29 @@ int main() {
   free(h_B);
   free(h_A);
 }
+
+
+__global__ void vecAdd(float *A, float *B, float *C) {
+  /**
+  * threadIdx gives the index of a thread within its thread block. Each thread in a thread block will have a different index. 
+  * blockDim gives the dimensions of the thread block, which was specified in the execution configuration of the kernel launch.
+  * blockIdx gives the index of a thread block within the grid. Each thread block will have a different index.
+  * gridDim gives the dimensions of the grid, which was specified in the execution configuration when the kernel was launched.
+  * Each of these intrinsics is a 3-component vector with a .x, .y, and .z member. 
+  * Dimensions not specified by a launch configuration will default to 1. 
+  * threadIdx and blockIdx are zero indexed
+  */
+
+  // calculate which element this thread is responsible for computing
+  int workIndex = threadIdx.x + blockDim.x * blockIdx.x;
+
+  // Perform computation
+  C[workIndex] = A[workIndex] + B[workIndex];
+}
+
+/**
+To schedule a thread block to an SM, the total number of registers needed for each thread 
+multiplied by the number of threads in the thread block must be less than or equal to the available registers in the SM. 
+If the number of registers required for a thread block exceeds the size of the register file, 
+the kernel is not launchable and the number of threads in the thread block must be decreased to make the thread block launchable.
+*/
