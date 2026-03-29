@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include "utils.h"
 
+#define BLOCK_SIZE 16
+
 __device__ double dotProduct(const double *A, const double *B, const unsigned int K,
                                       const unsigned int ldA, const unsigned int ldB,
                                       const unsigned int rowA, const unsigned int colB) {
@@ -45,7 +47,6 @@ int main() {
 
   /**
   We need as many threads as elements in C.
-  We also need a 2-dimensional block to compute the row and column indices of C.
   Recommended minimum number of threads in a block is 32, the warp size.
   Maximum number of threads in a block is 1024 (so the dimensions must multiply to a value less or equal than 1024).
 
@@ -62,12 +63,11 @@ int main() {
   dim3 DimBlock(16, 16);
   
   Note that, if we fix DimBlock, then DimGrid must be computed as:
-  DimGrid.x = (M + DimBlock.x - 1) / DimBlock.x;
+  DimGrid.x = (M + DimBlock.x - 1) / DimBlock.x
   DimGrid.y = (N + DimBlock.y - 1) / DimBlock.y
   */
-  const unsigned int blockSize = 16;
-  dim3 DimGrid((M + blockSize - 1) / blockSize, (N + blockSize - 1) / blockSize);
-  dim3 DimBlock(blockSize, blockSize);
+  dim3 DimGrid((M + BLOCK_SIZE - 1) / BLOCK_SIZE, (N + BLOCK_SIZE - 1) / BLOCK_SIZE);
+  dim3 DimBlock(BLOCK_SIZE, BLOCK_SIZE);
 
 
   h_A = (double *)malloc(N * LD * sizeof(double));
