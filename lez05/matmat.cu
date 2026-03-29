@@ -21,11 +21,12 @@ __global__ void matmat(const double *A, const double *B, double *C,
                              const unsigned int K, const unsigned int ldA,
                              const unsigned int ldB, const unsigned int ldC) {
   /**
-  Each block is responsible for computing one square sub-matrix Csub of C 
+  Each block is responsible for computing one square sub-matrix of C 
   by loading tiles of input matrices A and B from global memory to shared memory.
   Each thread within the block: 
   1) loads a single element from A and B into shared memory
-  2) computes a single element of Csub using all the elements loaded by the threads in the block
+  2) partially computes a single element of C using the elements from the tiles of A and B loaded by the threads in the block
+  After that, all the threads in the block move on to the next tile.
   */
 
   const unsigned int globalRow = blockIdx.y * blockDim.y + threadIdx.y;
@@ -39,15 +40,20 @@ __global__ void matmat(const double *A, const double *B, double *C,
 
   double res = 0.0f;
   
+  // A and B are divided into tiles of size BLOCK_SIZE x BLOCK_SIZE. 
+  // The loop iterates over the K dimension in steps of BLOCK_SIZE, effectively processing one tile of A and B at a time.
   for (int i = 0; i < K; i += BLOCK_SIZE) {
+    // Each thread loads one element of the tile of A and B into shared memory.
+    // The element is determined by the thread's local row and column indices within the block, and the current tile (i) in the K dimension.
     shared_A[localRow * BLOCK_SIZE + localCol] = A[globalRow * ldA + (i + localCol)];
     shared_B[localRow * BLOCK_SIZE + localCol] = B[(i + localRow) * ldB + globalCol];
-    __syncthreads(); // Barrier to ensure all threads loaded their share of data into shared memory before proceeding
+    // Barrier to ensure all threads loaded their share of data into shared memory before proceeding
+    __syncthreads(); 
 
-    for (int k = 0; k < BLOCK_SIZE; k++) {
-      res += shared_A[localRow * BLOCK_SIZE + k] * shared_B[k * BLOCK_SIZE + localCol];
-    }
-    __syncthreads(); // Barrier to ensure all threads have completed their computation using the current tile before replacing it with the next tile
+    // The thread accumulates the dot product of the current tile of A and B into the result.
+    res += dotProduct(shared_A, shared_B, BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE, localRow, localCol);
+    // Barrier to ensure all threads have completed their computation using the current tile before replacing it with the next tile
+    __syncthreads(); 
   }
 
   if (globalRow < N && globalCol < M) {
