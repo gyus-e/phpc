@@ -1,13 +1,9 @@
+#include "integrals.hpp"
+
 #include <cuda_runtime.h>
 #include <math.h>
 #include <omp.h>
-#include <stdio.h>
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
-
-#define WARP_SIZE 32
 #define SHARED_MEM_SIZE 256
 
 inline __device__ __host__ double f(const double x) { return 2*sin(x) + 3*pow(cos(x), 2) + 5*pow(x, 3); }
@@ -91,7 +87,7 @@ This allows us to compute the global sum in registers, which are faster than sha
 */
 __device__ double warp_sum(double val) {
   const unsigned int mask = 0xFFFFFFFF; // all threads in the warp are active
-  for (unsigned int offset = (WARP_SIZE >> 1); offset > 0; offset >>= 1) {
+  for (unsigned int offset = (warpSize >> 1); offset > 0; offset >>= 1) {
     val += __shfl_down_sync(mask, val, offset);
   }
   return val;
@@ -100,7 +96,7 @@ __device__ double warp_sum(double val) {
 __global__ void trap_gpu_warp_shuffle(const double a, const unsigned long n,
                             const double h, double *res) {
   const unsigned int tid = threadIdx.x;
-  const unsigned int lane = tid % WARP_SIZE;
+  const unsigned int lane = tid % warpSize;
   const unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
 
   double val = 0;
@@ -117,18 +113,20 @@ __global__ void trap_gpu_warp_shuffle(const double a, const unsigned long n,
 
 
 double integral_cpu(const double a, const double b, const double h,
-                    const unsigned long n, const unsigned int nt) {
+                    const unsigned long n, const unsigned int nt, double *time) {
   double res = f(a) + f(b);
   double sum = 0;
 
   omp_set_num_threads(nt);
 
   double start = omp_get_wtime() * 1000;
-
+  
   trap_cpu(a, n, h, sum);
-
+  
   double end = omp_get_wtime() * 1000;
-  printf("[CPU %s] Time taken: %lf ms\n", (nt == 1 ? "sequential" : "multithread"), end - start);
+  if (time != nullptr) {
+    *time = end - start;
+  }
 
   res += 2 * sum;
   res *= h * 0.5;
@@ -137,7 +135,7 @@ double integral_cpu(const double a, const double b, const double h,
 
 double integral_gpu_naive(const double a, const double b, const double h,
                     const unsigned long n, const unsigned int blockSize,
-                    const unsigned int gridSize) {
+                    const unsigned int gridSize, double *time) {
   double res = f(a) + f(b);
   double *sum;
   cudaMallocManaged(&sum, sizeof(double));
@@ -152,7 +150,9 @@ double integral_gpu_naive(const double a, const double b, const double h,
   cudaDeviceSynchronize();
 
   double end = omp_get_wtime() * 1000;
-  printf("[GPU naive] Time taken: %lf ms\n", end - start);
+  if (time != nullptr) {
+    *time = end - start;
+  }
 
   res += 2 * (*sum);
   res *= h * 0.5;
@@ -162,7 +162,7 @@ double integral_gpu_naive(const double a, const double b, const double h,
 
 double integral_gpu_shared_mem(const double a, const double b, const double h,
                     const unsigned long n, const unsigned int blockSize,
-                    const unsigned int gridSize) {
+                    const unsigned int gridSize, double *time) {
   double res = f(a) + f(b);
   double *sum;
   cudaMallocManaged(&sum, sizeof(double));
@@ -177,7 +177,9 @@ double integral_gpu_shared_mem(const double a, const double b, const double h,
   cudaDeviceSynchronize();
 
   double end = omp_get_wtime() * 1000;
-  printf("[GPU shared_mem] Time taken: %lf ms\n", end - start);
+  if (time != nullptr) {
+    *time = end - start;
+  }
 
   res += 2 * (*sum);
   res *= h * 0.5;
@@ -187,7 +189,7 @@ double integral_gpu_shared_mem(const double a, const double b, const double h,
 
 double integral_gpu_warp_shuffle(const double a, const double b, const double h,
                     const unsigned long n, const unsigned int blockSize,
-                    const unsigned int gridSize) {
+                    const unsigned int gridSize, double *time) {
   double res = f(a) + f(b);
   double *sum;
   cudaMallocManaged(&sum, sizeof(double));
@@ -200,55 +202,13 @@ double integral_gpu_warp_shuffle(const double a, const double b, const double h,
   trap_gpu_warp_shuffle<<<dimGrid, dimBlock>>>(a, n, h, sum);
   cudaDeviceSynchronize();
 
-  double end = omp_get_wtime() * 1000;
-  printf("[GPU warp_shuffle] Time taken: %lf ms\n", end - start);
+  double end = omp_get_wtime() * 1000;  
+  if (time != nullptr) {
+    *time = end - start;
+  }
 
   res += 2 * (*sum);
   res *= h * 0.5;
   cudaFree(sum);
   return res;                    
-}
-
-
-int checkErr(const double a, const double b, const char a_name[], const char b_name[]) {
-  if (fabs(a - b) > 1e-6) {
-    printf("Error: %s = %lf; %s = %lf.\n", a_name, a, b_name, b);
-    return 1;
-  }
-  return 0;
-}
-
-int main(int argc, char *argv[]) {
-  const unsigned long n = pow(2, 16);
-  const unsigned int nt = omp_get_max_threads();
-  const unsigned int blockSize = 2*WARP_SIZE;
-  const unsigned int gridSize = (n + blockSize - 1) / blockSize;
-  printf("Using %lu subdivisions for the integral approximation.\n", n);
-  printf("Using %u threads for the CPU version.\n", nt);
-  printf("Using %u threads per block and %u blocks for the GPU version.\n\n",
-         blockSize, gridSize);
-
-  const double a = 0.0;
-  const double b = M_PI;
-  const double h = (b - a) / (double)n;
-
-  const double cpu_st_res = integral_cpu(a, b, h, n, 1);
-  printf("[CPU sequential] Integral of f(x) from %lf to %lf = %lf\n\n", a, b, cpu_st_res);
-
-  const double cpu_mt_res = integral_cpu(a, b, h, n, nt);
-  printf("[CPU multithread] Integral of f(x) from %lf to %lf = %lf\n\n", a, b, cpu_mt_res);
-
-  const double gpu_naive_res = integral_gpu_naive(a, b, h, n, blockSize, gridSize);
-  printf("[GPU naive] Integral of f(x) from %lf to %lf = %lf\n\n", a, b, gpu_naive_res);
-
-  const double gpu_shared_mem_res = integral_gpu_shared_mem(a, b, h, n, blockSize, gridSize);
-  printf("[GPU shared_mem] Integral of f(x) from %lf to %lf = %lf\n\n", a, b, gpu_shared_mem_res);
-
-  const double gpu_warp_shuffle_res = integral_gpu_warp_shuffle(a, b, h, n, blockSize, gridSize);
-  printf("[GPU warp_shuffle] Integral of f(x) from %lf to %lf = %lf\n\n", a, b, gpu_warp_shuffle_res);
-
-  return checkErr(cpu_st_res, cpu_st_res, "cpu_st_res", "cpu_mt_res") +
-         checkErr(cpu_st_res, gpu_naive_res, "cpu_st_res", "gpu_naive_res") +
-         checkErr(cpu_st_res, gpu_shared_mem_res, "cpu_st_res", "gpu_shared_mem_res") +
-         checkErr(cpu_st_res, gpu_warp_shuffle_res, "cpu_st_res", "gpu_warp_shuffle_res");
 }
