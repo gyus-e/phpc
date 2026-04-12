@@ -87,13 +87,35 @@ __global__ void trap_gpu_shared_mem(const double a, const unsigned long n,
 }
 
 /**
-Version 2: use warp shuffle instructions (available in devices with compute capability >= 3.0).
-Warp shuffle instructions allow threads within a warp to read variables stored by other threads in the warp
+GPU shared memory, tree-structured sum: 
+use warp shuffle instructions (available in devices with compute capability >= 3.0).
+Warp shuffle instructions allow threads within a warp to read variables stored in another thread’s register in the warp.
+This allows us to compute the global sum in registers, which are faster than shared memory.
 */
+__device__ double warp_sum(double val) {
+  const unsigned int mask = 0xFFFFFFFF; // all threads in the warp are active
+  for (unsigned int offset = (WARP_SIZE >> 1); offset > 0; offset >>= 1) {
+    val += __shfl_down_sync(mask, val, offset);
+  }
+  return val;
+}
+
 __global__ void trap_gpu_warp_shuffle(const double a, const unsigned long n,
                             const double h, double *res) {
-  //TODO  
-  return;
+  const unsigned int tid = threadIdx.x;
+  const unsigned int lane = tid % WARP_SIZE;
+  const unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
+
+  double val = 0;
+  if (i > 0 && i < n) {
+    double x_i = a + i * h;
+    val = f(x_i);
+  }
+
+  double sum = warp_sum(val);
+  if (lane == 0) {
+    atomicAdd(res, sum);
+  }
 }
 
 
@@ -220,6 +242,10 @@ int main(int argc, char *argv[]) {
   double gpu_shared_mem_res = integral_gpu_shared_mem(a, b, h, n, blockSize, gridSize);
   printf("[GPU shared_mem] Integral of f(x) from %lf to %lf = %lf\n\n", a, b, gpu_shared_mem_res);
 
+  double gpu_warp_shuffle_res = integral_gpu_warp_shuffle(a, b, h, n, blockSize, gridSize);
+  printf("[GPU warp_shuffle] Integral of f(x) from %lf to %lf = %lf\n\n", a, b, gpu_warp_shuffle_res);
+
   return checkErr(cpu_res, gpu_naive_res, "cpu_res", "gpu_naive_res") +
-         checkErr(cpu_res, gpu_shared_mem_res, "cpu_res", "gpu_shared_mem_res");
+         checkErr(cpu_res, gpu_shared_mem_res, "cpu_res", "gpu_shared_mem_res") +
+         checkErr(cpu_res, gpu_warp_shuffle_res, "cpu_res", "gpu_warp_shuffle_res");
 }
