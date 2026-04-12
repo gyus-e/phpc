@@ -7,6 +7,8 @@
 #define M_PI 3.14159265358979323846
 #endif
 
+#define WARP_SIZE 32
+
 int checkErr(const double a, const double b, const char a_name[], const char b_name[]) {
   if (fabs(a - b) > 1e-6) {
     printf("Error: %s = %lf; %s = %lf.\n", a_name, a, b_name, b);
@@ -18,8 +20,18 @@ int checkErr(const double a, const double b, const char a_name[], const char b_n
 int main(int argc, char *argv[]) {
   const unsigned long n = pow(2, 20);
   const unsigned int nt = omp_get_max_threads();
-  const unsigned int blockSize = 32;
+
+  unsigned int k = 1;
+  if (argc > 1) {
+    k = atoi(argv[1]);
+    if (k <= 0) {
+      printf("Invalid value for k: %s. Using default k=1.\n", argv[1]);
+      k = 1;
+    }
+  }
+  const unsigned int blockSize = k*WARP_SIZE;
   const unsigned int gridSize = (n + blockSize - 1) / blockSize;
+
   printf("Using %lu subdivisions for the integral approximation.\n", n);
   printf("Using %u threads for the CPU version.\n", nt);
   printf("Using %u threads per block and %u blocks for the GPU version.\n\n",
