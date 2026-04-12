@@ -8,7 +8,7 @@ Assume sdata[tid] is already loaded with each thread’s value
 */
 __device__ float shared_mem_sum(float *sdata) {
   int tid = threadIdx.x;
-  for (int stride = (blockDim.x * 0.5); stride > 0; stride >>= 1) {
+  for (int stride = (blockDim.x << 1); stride > 0; stride >>= 1) {
     if (tid < stride) {
       sdata[tid] += sdata[tid + stride];
     }

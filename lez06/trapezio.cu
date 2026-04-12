@@ -7,6 +7,7 @@
 #define M_PI 3.14159265358979323846
 #endif
 
+#define WARP_SIZE 32
 #define SHARED_MEM_SIZE 4096
 
 inline __device__ __host__ double f(const double x) { return sin(x); }
@@ -20,8 +21,8 @@ x_i = a + i * h
 */
 
 /**
-CPU version: each thread computes one addend of the sum (2*f(x_i)) and
-adds it to the result using atomicAdd.
+CPU version: 
+each thread computes one addend of the sum (2*f(x_i)) and adds it to the result using atomicAdd.
 */
 void trap_cpu(const double a, const unsigned long n, const double h,
               double &res) {
@@ -35,8 +36,9 @@ void trap_cpu(const double a, const unsigned long n, const double h,
 }
 
 /**
-GPU naive version: same as CPU, but we assume that the number of threads is at
-least n. We also assume a one-dimensional grid and block configuration.
+GPU naive version: 
+same as CPU, but we assume that the number of threads is at least n. 
+We also assume a one-dimensional grid and block configuration.
 */
 __global__ void trap_gpu_naive(const double a, const unsigned long n,
                                const double h, double *res) {
@@ -49,13 +51,13 @@ __global__ void trap_gpu_naive(const double a, const unsigned long n,
 }
 
 /**
-GPU optimized version: pair up the threads so that half of the “active” threads add their partial sum to their partner’s partial sum. 
-Version 1: use shared memory (for devices with compute capability < 3.0). 
+GPU shared memory, tree-structured sum: 
+pair up the threads so that half of the “active” threads add their partial sum to their partner’s partial sum. 
 */
-__device__ void shared_mem_sum(double *sdata) {
+__device__ void shared_mem_sum(double *sdata, const unsigned int sdata_len) {
   const unsigned int tid = threadIdx.x;
-  for (int stride = (blockDim.x * 0.5); stride > 0; stride >>= 1) {
-    if (tid < stride) {
+  for (unsigned int stride = (blockDim.x >> 1); stride > 0; stride >>= 1) {
+    if (tid < stride && tid + stride < sdata_len) {
       sdata[tid] += sdata[tid + stride];
     }
     __syncthreads();
@@ -78,7 +80,7 @@ __global__ void trap_gpu_shared_mem(const double a, const unsigned long n,
   }
   __syncthreads();
 
-  shared_mem_sum(sdata);
+  shared_mem_sum(sdata, SHARED_MEM_SIZE);
   if (tid == 0) {
     atomicAdd(res, sdata[0]);
   }
@@ -198,7 +200,7 @@ int checkErr(const double a, const double b, const char a_name[], const char b_n
 int main(int argc, char *argv[]) {
   const unsigned long n = SHARED_MEM_SIZE;
   const unsigned int nt = omp_get_max_threads();
-  const unsigned int blockSize = 64;
+  const unsigned int blockSize = WARP_SIZE;
   const unsigned int gridSize = (n + blockSize - 1) / blockSize;
   printf("Using %lu subdivisions for the integral approximation.\n", n);
   printf("Using %u threads for the CPU version.\n", nt);
