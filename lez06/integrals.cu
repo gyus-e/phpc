@@ -18,7 +18,8 @@ x_i = a + i * h
 
 /**
 CPU version: 
-each thread computes one addend of the sum (2*f(x_i)) and adds it to the result using atomicAdd.
+each thread computes one addend of the sum (2*f(x_i)) and adds it to the result.
+Note that the sum must be protected by a critical section or a reduction to avoid race conditions.
 */
 void trap_cpu(const double a, const unsigned long n, const double h,
               double &res) {
@@ -80,10 +81,10 @@ __global__ void trap_gpu_shared_mem(const double a, const unsigned long n,
 }
 
 /**
-GPU shared memory, tree-structured sum: 
-use warp shuffle instructions (available in devices with compute capability >= 3.0).
+GPU warp shuffle, tree-structured sum: 
 Warp shuffle instructions allow threads within a warp to read variables stored in another thread’s register in the warp.
 This allows us to compute the global sum in registers, which are faster than shared memory.
+(Only available in devices with compute capability >= 3.0)
 */
 __device__ double warp_sum(double val) {
   const unsigned int mask = 0xFFFFFFFF; // all threads in the warp are active
