@@ -84,8 +84,21 @@ There can be a shared array to store up to 32 elements,
 thread with lane 0 of each warp w will store its own sum in the w element of that array
 */
 __device__ double warp_shuffle_dissemination_sum(double val, double sdata[]) {
+  const unsigned int tid = threadIdx.x;
+  const unsigned int lane = tid % warpSize;
+  const unsigned int warp = tid / warpSize;
 
-  return warp_shuffle_dissemination_sum_single_warp(val);
+  val = warp_shuffle_dissemination_sum_single_warp(val);
+
+  if (lane == 0) {
+    sdata[warp] = val;
+  }
+  __syncthreads();
+  
+  if (warp == 0) {
+    // TODO: add the sums of the other warps
+  }
+  return sdata[warp];
 }
 
 /**
@@ -210,7 +223,7 @@ __global__ void trap_gpu_warp_shuffle_dissemination_sum(const double a,
     val = f(x_i);
   }
 
-  double sum = warp_shuffle_dissemination_sum(val);
+  double sum = warp_shuffle_dissemination_sum(val, sdata);
   if (lane == 0) {
     atomicAdd(res, sum);
   }
