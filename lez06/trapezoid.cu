@@ -83,7 +83,8 @@ warp 0 consists of all the threads with rank between 0 and warpSize-1
 There can be a shared array to store up to 32 elements,
 thread with lane 0 of each warp w will store its own sum in the w element of that array
 */
-__device__ double warp_shuffle_dissemination_sum(double val) { 
+__device__ double warp_shuffle_dissemination_sum(double val, double sdata[]) {
+
   return warp_shuffle_dissemination_sum_single_warp(val);
 }
 
@@ -198,6 +199,7 @@ __global__ void trap_gpu_warp_shuffle_dissemination_sum(const double a,
                                                         const unsigned long n,
                                                         const double h,
                                                         double *res) {
+  extern __shared__ double sdata[];
   const unsigned int tid = threadIdx.x;
   const unsigned int lane = tid % warpSize;
   const unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
