@@ -5,10 +5,10 @@ XFLAGS = -Xcompiler=/openmp
 
 all: main.exe
 
-main.exe: integrals.obj trapezoid.obj main.obj
-	$(CC) integrals.obj trapezoid.obj main.obj -o main.exe $(CFLAGS) $(XFLAGS)
+main.exe: main.obj integrals.obj trapezoid.obj
+	$(CC) main.obj integrals.obj trapezoid.obj -o main.exe $(CFLAGS) $(XFLAGS)
 
-main.obj: main.cu integrals.hpp
+main.obj: main.cu integrals.hpp trapezoid.hpp utils.hpp
 	$(CC) -c main.cu -o main.obj $(CFLAGS) $(XFLAGS)
 
 integrals.obj: integrals.cu integrals.hpp trapezoid.hpp utils.hpp
