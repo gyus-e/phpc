@@ -8,11 +8,11 @@ double integral_gpu_naive(const double a, const double b, const double h,
                     const unsigned long n, const unsigned int blockSize,
                     const unsigned int gridSize, double *time);
 
-double integral_gpu_shared_mem(const double a, const double b, const double h,
+double integral_gpu_shared_mem_tree_sum(const double a, const double b, const double h,
                     const unsigned long n, const unsigned int blockSize,
                     const unsigned int gridSize, double *time);
 
-double integral_gpu_warp_shuffle(const double a, const double b, const double h,
+double integral_gpu_warp_shuffle_tree_sum(const double a, const double b, const double h,
                     const unsigned long n, const unsigned int blockSize,
                     const unsigned int gridSize, double *time);
 

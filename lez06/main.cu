@@ -52,14 +52,14 @@ int main(int argc, char *argv[]) {
 
   double gpu_shared_mem_time, gpu_shared_mem_sp;
   const char* gpu_shared_mem_label = "GPU shared memory tree-structured sum";
-  const double gpu_shared_mem_res = integral_gpu_shared_mem(a, b, h, n, blockSize, gridSize, &gpu_shared_mem_time);
+  const double gpu_shared_mem_res = integral_gpu_shared_mem_tree_sum(a, b, h, n, blockSize, gridSize, &gpu_shared_mem_time);
   gpu_shared_mem_sp = cpu_st_time / gpu_shared_mem_time;
   printf("[%s] Integral of f(x) from %lf to %lf = %lf\n", gpu_shared_mem_label, a, b, gpu_shared_mem_res);
   printf("[%s] Time taken: %lf ms; Speedup: %lf\n\n", gpu_shared_mem_label, gpu_shared_mem_time, gpu_shared_mem_sp);
 
   double gpu_warp_shuffle_time, gpu_warp_shuffle_sp;
   const char* gpu_warp_shuffle_label = "GPU warp shuffle tree-structured sum";
-  const double gpu_warp_shuffle_res = integral_gpu_warp_shuffle(a, b, h, n, blockSize, gridSize, &gpu_warp_shuffle_time);
+  const double gpu_warp_shuffle_res = integral_gpu_warp_shuffle_tree_sum(a, b, h, n, blockSize, gridSize, &gpu_warp_shuffle_time);
   gpu_warp_shuffle_sp = cpu_st_time / gpu_warp_shuffle_time;
   printf("[%s] Integral of f(x) from %lf to %lf = %lf\n", gpu_warp_shuffle_label, a, b, gpu_warp_shuffle_res);
   printf("[%s] Time taken: %lf ms; Speedup: %lf\n\n", gpu_warp_shuffle_label, gpu_warp_shuffle_time, gpu_warp_shuffle_sp);
