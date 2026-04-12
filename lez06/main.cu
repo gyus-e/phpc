@@ -18,7 +18,7 @@ int checkErr(const double a, const double b, const char a_name[], const char b_n
 int main(int argc, char *argv[]) {
   const unsigned long n = pow(2, 20);
   const unsigned int nt = omp_get_max_threads();
-  const unsigned int blockSize = 2*32;
+  const unsigned int blockSize = 32;
   const unsigned int gridSize = (n + blockSize - 1) / blockSize;
   printf("Using %lu subdivisions for the integral approximation.\n", n);
   printf("Using %u threads for the CPU version.\n", nt);
@@ -63,8 +63,16 @@ int main(int argc, char *argv[]) {
   printf("[%s] Integral of f(x) from %lf to %lf = %lf\n", gpu_warp_shuffle_label, a, b, gpu_warp_shuffle_res);
   printf("[%s] Time taken: %lf ms; Speedup: %lf\n\n", gpu_warp_shuffle_label, gpu_warp_shuffle_time, gpu_warp_shuffle_sp);
 
+  double gpu_shared_mem_dissemination_time, gpu_shared_mem_dissemination_sp;
+  const char* gpu_shared_mem_dissemination_label = "GPU shared memory dissemination sum";
+  const double gpu_shared_mem_dissemination_res = integral_gpu_shared_mem_dissemination_sum(a, b, h, n, blockSize, gridSize, &gpu_shared_mem_dissemination_time);
+  gpu_shared_mem_dissemination_sp = cpu_st_time / gpu_shared_mem_dissemination_time;
+  printf("[%s] Integral of f(x) from %lf to %lf = %lf\n", gpu_shared_mem_dissemination_label, a, b, gpu_shared_mem_dissemination_res);
+  printf("[%s] Time taken: %lf ms; Speedup: %lf\n\n", gpu_shared_mem_dissemination_label, gpu_shared_mem_dissemination_time, gpu_shared_mem_dissemination_sp);
+
   return checkErr(cpu_st_res, cpu_st_res, "cpu_st_res", "cpu_mt_res") +
          checkErr(cpu_st_res, gpu_naive_res, "cpu_st_res", "gpu_naive_res") +
          checkErr(cpu_st_res, gpu_shared_mem_res, "cpu_st_res", "gpu_shared_mem_res") +
-         checkErr(cpu_st_res, gpu_warp_shuffle_res, "cpu_st_res", "gpu_warp_shuffle_res");
+         checkErr(cpu_st_res, gpu_warp_shuffle_res, "cpu_st_res", "gpu_warp_shuffle_res") +
+         checkErr(cpu_st_res, gpu_shared_mem_dissemination_res, "cpu_st_res", "gpu_shared_mem_dissemination_sum_res");
 }
