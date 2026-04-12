@@ -8,9 +8,9 @@
 #endif
 
 #define WARP_SIZE 32
-#define SHARED_MEM_SIZE 4096
+#define SHARED_MEM_SIZE 256
 
-inline __device__ __host__ double f(const double x) { return sin(x); }
+inline __device__ __host__ double f(const double x) { return 2*sin(x) + 3*pow(cos(x), 2) + 5*pow(x, 3); }
 
 /**
 Trapezoidal rule: the integral of f(x) from a to b is approximated by:
@@ -70,11 +70,8 @@ __global__ void trap_gpu_shared_mem(const double a, const unsigned long n,
 
   const unsigned int tid = threadIdx.x;
   const unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
-  if (i >= SHARED_MEM_SIZE) {
-    return;
-  }
-  sdata[tid] = 0;
-  if (i > 0 && i < n) {
+
+  if (tid <= SHARED_MEM_SIZE && i < n && i > 0) {
     double x_i = a + i * h;
     sdata[tid] = f(x_i);
   }
@@ -131,7 +128,7 @@ double integral_cpu(const double a, const double b, const double h,
   trap_cpu(a, n, h, sum);
 
   double end = omp_get_wtime() * 1000;
-  printf("[CPU] Time taken: %lf ms\n", end - start);
+  printf("[CPU %s] Time taken: %lf ms\n", (nt == 1 ? "sequential" : "multithread"), end - start);
 
   res += 2 * sum;
   res *= h * 0.5;
@@ -144,6 +141,7 @@ double integral_gpu_naive(const double a, const double b, const double h,
   double res = f(a) + f(b);
   double *sum;
   cudaMallocManaged(&sum, sizeof(double));
+  *sum = 0;
 
   dim3 dimBlock(blockSize);
   dim3 dimGrid(gridSize);
@@ -168,6 +166,7 @@ double integral_gpu_shared_mem(const double a, const double b, const double h,
   double res = f(a) + f(b);
   double *sum;
   cudaMallocManaged(&sum, sizeof(double));
+  *sum = 0;
 
   dim3 dimBlock(blockSize);
   dim3 dimGrid(gridSize);
@@ -220,9 +219,9 @@ int checkErr(const double a, const double b, const char a_name[], const char b_n
 }
 
 int main(int argc, char *argv[]) {
-  const unsigned long n = SHARED_MEM_SIZE;
+  const unsigned long n = pow(2, 14);
   const unsigned int nt = omp_get_max_threads();
-  const unsigned int blockSize = WARP_SIZE;
+  const unsigned int blockSize = 2*WARP_SIZE;
   const unsigned int gridSize = (n + blockSize - 1) / blockSize;
   printf("Using %lu subdivisions for the integral approximation.\n", n);
   printf("Using %u threads for the CPU version.\n", nt);
@@ -233,8 +232,11 @@ int main(int argc, char *argv[]) {
   const double b = M_PI;
   const double h = (b - a) / (double)n;
 
-  double cpu_res = integral_cpu(a, b, h, n, nt);
-  printf("[CPU] Integral of f(x) from %lf to %lf = %lf\n\n", a, b, cpu_res);
+  double cpu_st_res = integral_cpu(a, b, h, n, 1);
+  printf("[CPU sequential] Integral of f(x) from %lf to %lf = %lf\n\n", a, b, cpu_st_res);
+
+  double cpu_mt_res = integral_cpu(a, b, h, n, nt);
+  printf("[CPU multithread] Integral of f(x) from %lf to %lf = %lf\n\n", a, b, cpu_mt_res);
 
   double gpu_naive_res = integral_gpu_naive(a, b, h, n, blockSize, gridSize);
   printf("[GPU naive] Integral of f(x) from %lf to %lf = %lf\n\n", a, b, gpu_naive_res);
@@ -245,7 +247,8 @@ int main(int argc, char *argv[]) {
   double gpu_warp_shuffle_res = integral_gpu_warp_shuffle(a, b, h, n, blockSize, gridSize);
   printf("[GPU warp_shuffle] Integral of f(x) from %lf to %lf = %lf\n\n", a, b, gpu_warp_shuffle_res);
 
-  return checkErr(cpu_res, gpu_naive_res, "cpu_res", "gpu_naive_res") +
-         checkErr(cpu_res, gpu_shared_mem_res, "cpu_res", "gpu_shared_mem_res") +
-         checkErr(cpu_res, gpu_warp_shuffle_res, "cpu_res", "gpu_warp_shuffle_res");
+  return checkErr(cpu_st_res, cpu_st_res, "cpu_st_res", "cpu_mt_res") +
+         checkErr(cpu_st_res, gpu_naive_res, "cpu_st_res", "gpu_naive_res") +
+         checkErr(cpu_st_res, gpu_shared_mem_res, "cpu_st_res", "gpu_shared_mem_res") +
+         checkErr(cpu_st_res, gpu_warp_shuffle_res, "cpu_st_res", "gpu_warp_shuffle_res");
 }
