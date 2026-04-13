@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
          blockSize, gridSize);
 
   const double a = 0.0;
-  const double b = M_PI;
+  const double b = 2*M_PI;
   const double h = (b - a) / (double)n;
 
   double cpu_st_time;
