@@ -13,10 +13,7 @@ Note: __syncthreads() only synchronizes threads within the same block.
 Note: sdata should be blockSize elements long
 Note: the number of threads in the block should be a power of 2
 */
-__device__ double shared_mem_tree_sum(double sdata[], const unsigned int sdataLen) {
-  const unsigned int block_tid = threadIdx.x;
-  const unsigned int blockSize = blockDim.x;
-
+__device__ double shared_mem_tree_sum(double sdata[], const unsigned int sdataLen, const unsigned int block_tid, const unsigned int blockSize) {
   for (unsigned int stride = (blockSize >> 1); stride > 0; stride >>= 1) {
     if (block_tid < stride && block_tid + stride < sdataLen) {
       sdata[block_tid] += sdata[block_tid + stride];
@@ -141,7 +138,7 @@ __global__ void trap_gpu_shared_mem_tree_sum(const double a,
   }
   __syncthreads();
 
-  double sum = shared_mem_tree_sum(sdata, sdataLen);
+  double sum = shared_mem_tree_sum(sdata, sdataLen, block_tid, blockDim.x);
   if (block_tid == 0) {
     atomicAdd(res, sum);
   }
@@ -174,26 +171,43 @@ __global__ void trap_gpu_warp_shuffle_tree_sum(const double a,
 __global__ void trap_gpu_shared_mem_dissemination_sum(const double a,
                                                       const unsigned long n,
                                                       const double h,
-                                                      const unsigned int sdataLen,
                                                       double *res) {
-  extern __shared__ double sdata[];
+  __shared__ double thread_calcs[MAX_BLKSZ];
+  __shared__ double warp_sum_arr[WARP_SIZE];
   const unsigned int glob_tid = threadIdx.x + blockIdx.x * blockDim.x;
   const unsigned int block_tid = threadIdx.x;
   const unsigned int lane = block_tid % warpSize;
+  const unsigned int warp = block_tid / warpSize;
+  const unsigned int warpsPerBlock = (blockDim.x / WARP_SIZE) + ((blockDim.x % WARP_SIZE) != 0);
+  // Nota che MAX_BLKSZ = 1024 e WARP_SIZE = 32, di conseguenza warpsPerBlock <= WARP_SIZE
 
-  double val = 0;
+  double *shared_vals = &thread_calcs[warp * warpSize];
+
+  double val = 0.0;
   if (glob_tid > 0 && glob_tid < n) {
     double x_i = a + glob_tid * h;
     val = f(x_i);
   }
-  if (block_tid < sdataLen) {
-    sdata[block_tid] = val;
+  // thread_calcs[block_tid] = val
+  shared_vals[lane] = val; 
+  warp_sum_arr[lane] = 0.0;
+  __syncthreads();
+
+  double sum = shared_mem_tree_sum(shared_vals, warpSize, lane, warpSize);
+  __syncthreads();
+
+  if (lane == 0 && warp <= warpsPerBlock) { // OVVIAMENTE warp <= warpsPerBlock è sempre verificato
+    warp_sum_arr[warp] = sum; 
   }
   __syncthreads();
 
-  double sum = shared_mem_dissemination_sum(sdata, sdataLen);
-  if (lane == 0) {
-    atomicAdd(res, sum);
+  if (warp == 0) {
+    sum = shared_mem_tree_sum(warp_sum_arr, warpSize, lane, warpSize);
+    __syncthreads();
+
+    if (lane == 0) {
+      atomicAdd(res, sum);
+    }
   }
 }
 

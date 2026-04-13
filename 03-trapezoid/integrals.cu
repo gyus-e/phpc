@@ -130,14 +130,12 @@ double integral_gpu_shared_mem_dissemination_sum(const double a, const double b,
   cudaMallocManaged(&sum, sizeof(double));
   *sum = 0;
   
-  const unsigned int warpsPerBlock = (blockSize + WARP_SIZE - 1) / WARP_SIZE;
-  const unsigned int sharedMemSize = MAX_BLKSZ * sizeof(double);
   dim3 dimBlock(blockSize);
   dim3 dimGrid(gridSize);
 
   double start = omp_get_wtime() * 1000;
 
-  trap_gpu_shared_mem_dissemination_sum<<<dimGrid, dimBlock, sharedMemSize>>>(a, n, h, sharedMemSize, sum);
+  trap_gpu_shared_mem_dissemination_sum<<<dimGrid, dimBlock>>>(a, n, h, sum);
   cudaDeviceSynchronize();
 
   double end = omp_get_wtime() * 1000;
