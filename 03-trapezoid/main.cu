@@ -17,17 +17,17 @@ int checkErr(const double a, const double b, const char a_name[], const char b_n
 
 
 int main(int argc, char *argv[]) {
-  const unsigned long n = pow(2, 20);
-  const unsigned int nt = omp_get_max_threads();
-
-  unsigned int k = 1;
+  unsigned int blocksize_exp = 1;
+  unsigned int num_div_exp = 20;
   if (argc > 1) {
-    k = atoi(argv[1]);
-    if (k <= 0) {
-      printf("Invalid value for k: %s. Using default k=1.\n", argv[1]);
-      k = 1;
-    }
+    blocksize_exp = atoi(argv[1]);
   }
+  if (argc > 2) {
+    num_div_exp = atoi(argv[2]);
+  }
+  const unsigned long n = pow(2, num_div_exp);
+  const unsigned int k = pow(2, blocksize_exp);
+  const unsigned int nt = omp_get_max_threads();
   const unsigned int blockSize = (k * WARP_SIZE) < MAX_BLKSZ ? (k * WARP_SIZE) : MAX_BLKSZ;
   const unsigned int gridSize = (n + blockSize - 1) / blockSize;
 
