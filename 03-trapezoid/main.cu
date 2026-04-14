@@ -41,7 +41,7 @@ int main(int argc, char *argv[]) {
   printf("\"f(x)\": \"x*exp(-x)*cos(2*x)\",\n");
   printf("\"a\": %lf,\n", A);
   printf("\"b\": %lf,\n", B);
-  printf("\"n\": %lf,\n", n);
+  printf("\"n\": %lu,\n", n);
   printf("\"nt (cpu)\": %u,\n", nt);
   printf("\"blockSize\": %u,\n", blockSize);
   printf("\"gridSize\": %u,\n", gridSize);
