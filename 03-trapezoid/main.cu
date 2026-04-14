@@ -21,13 +21,17 @@ void printJsonResult(const char* label, const double res, const double time_ms, 
 int main(int argc, char *argv[]) {
   unsigned int blocksize_exp = 1;
   unsigned int num_div_exp = 20;
+  long num_div_sub = 0;
   if (argc > 1) {
     blocksize_exp = atoi(argv[1]);
   }
   if (argc > 2) {
     num_div_exp = atoi(argv[2]);
   }
-  const unsigned long n = pow(2, num_div_exp);
+  if (argc > 3) {
+    num_div_sub = atol(argv[3]);
+  }
+  const unsigned long n = pow(2, num_div_exp) - num_div_sub;
   const unsigned int k = pow(2, blocksize_exp);
   const unsigned int nt = omp_get_max_threads();
   const unsigned int blockSize = (k * WARP_SIZE) < MAX_BLKSZ ? (k * WARP_SIZE) : MAX_BLKSZ;
