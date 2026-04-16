@@ -1,3 +1,5 @@
+SRC = ./src
+BIN = ./bin
 CC = nvcc
 CFLAGS = -arch=sm_89
 XFLAGS = -Xcompiler=/openmp
@@ -5,17 +7,17 @@ XFLAGS = -Xcompiler=/openmp
 
 all: main.exe
 
-main.exe: main.obj integrals.obj trapezoid.obj utils.hpp
-	$(CC) main.obj integrals.obj trapezoid.obj -o main.exe $(CFLAGS) $(XFLAGS)
+main.exe: $(BIN)/main.obj $(BIN)/integrals.obj $(BIN)/trapezoid.obj $(SRC)/utils.hpp
+	$(CC) $(BIN)/main.obj $(BIN)/integrals.obj $(BIN)/trapezoid.obj -o main.exe $(CFLAGS) $(XFLAGS)
 
-main.obj: main.cu integrals.hpp trapezoid.hpp utils.hpp
-	$(CC) -c main.cu -o main.obj $(CFLAGS) $(XFLAGS)
+$(BIN)/main.obj: $(SRC)/main.cu $(SRC)/integrals.hpp $(SRC)/trapezoid.hpp $(SRC)/utils.hpp
+	$(CC) -c $(SRC)/main.cu -o $(BIN)/main.obj $(CFLAGS) $(XFLAGS)
 
-integrals.obj: integrals.cu integrals.hpp trapezoid.hpp utils.hpp
-	$(CC) -c integrals.cu -o integrals.obj $(CFLAGS) $(XFLAGS)
+$(BIN)/integrals.obj: $(SRC)/integrals.cu $(SRC)/integrals.hpp $(SRC)/trapezoid.hpp $(SRC)/utils.hpp
+	$(CC) -c $(SRC)/integrals.cu -o $(BIN)/integrals.obj $(CFLAGS) $(XFLAGS)
 
-trapezoid.obj: trapezoid.cu trapezoid.hpp utils.hpp
-	$(CC) -c trapezoid.cu -o trapezoid.obj $(CFLAGS) $(XFLAGS)
+$(BIN)/trapezoid.obj: $(SRC)/trapezoid.cu $(SRC)/trapezoid.hpp $(SRC)/utils.hpp
+	$(CC) -c $(SRC)/trapezoid.cu -o $(BIN)/trapezoid.obj $(CFLAGS) $(XFLAGS)
 
 clean:
-	rm -f *.exe *.obj *.pdb
+	rm -f *.exe *.obj *.pdb $(BIN)/*

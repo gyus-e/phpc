@@ -4,32 +4,42 @@ if [ ! -f main.exe ]; then
     make -j
 fi
 
-blocksize_exp=1
-num_div_exp=20
-num_div_sub=0
+mkdir -p results
 
-echo "{" > results.json
+run() {
+    blocksize_exp=$1
+    num_div_exp=$2
+    num_div_sub=$3
 
-for i in {1..10}; do
-    echo "\"Test $i\": " >> results.json
-    ./main.exe $blocksize_exp $num_div_exp $num_div_sub >> results.json
-    if [ $i -lt 10 ]; then
-        echo "," >> results.json
-    fi
-done
+    max_runs=50
+    run_conf=$blocksize_exp'_'$num_div_exp'_'$num_div_sub
+    filename='results/results.json'
 
-echo "}" >> results.json
+    echo "\"$run_conf\": [" >> $filename
 
-num_div_sub=17
+    for i in {1..50}; do
+        ./main.exe $blocksize_exp $num_div_exp $num_div_sub >> $filename
+        if [ $i -lt 50 ]; then
+            echo "," >> $filename
+        fi
+    done
 
-echo "{" > results_uneven.json
+    echo "]" >> $filename
+}
 
-for i in {1..10}; do
-    echo "\"Test $i\": " >> results_uneven.json
-    ./main.exe $blocksize_exp $num_div_exp $num_div_sub >> results_uneven.json
-    if [ $i -lt 10 ]; then
-        echo "," >> results_uneven.json
-    fi
-done
+echo "{" > results/results.json
+# 2^(i+5) block size, 2^20 subdivisions
+run 1 20 0
+echo "," >> results/results.json
+run 2 20 0
+echo "," >> results/results.json
+run 5 20 0
+echo "," >> results/results.json
 
-echo "}" >> results_uneven.json
+# 2^(i+5) block size, 2^20 - 17 subdivisions (not a power of 2)
+run 1 20 17
+echo "," >> results/results.json
+run 2 20 17
+echo "," >> results/results.json
+run 5 20 17
+echo "}" >> results/results.json
