@@ -13,11 +13,11 @@ void checkCUDAError(const char *msg) {
 }
 
 void benchmarkKernel(matmatkernel_t kernel, const char *kernelName,
-                     dim3 gridDim, dim3 blockDim, const double *__restrict__ dA,
-                     const double *__restrict__ dB, double *__restrict__ dC,
+                     const dim3 gridDim, const dim3 blockDim, const size_t sharedMem, 
+                     const double *__restrict__ dA, const double *__restrict__ dB, 
+                     double *__restrict__ dC, double *hC,
                      const size_t N, const size_t K, const size_t M,
-                     const size_t ldA, const size_t ldB, const size_t ldC,
-                     double *hC) {
+                     const size_t ldA, const size_t ldB, const size_t ldC) {
   float milliseconds = 0;
   cudaEvent_t start, stop;
   cudaEventCreate(&start);
@@ -26,7 +26,7 @@ void benchmarkKernel(matmatkernel_t kernel, const char *kernelName,
   cudaMemset(dC, 0, N * M * sizeof(double));
 
   cudaEventRecord(start);
-  kernel<<<gridDim, blockDim>>>(dA, dB, dC, N, K, M, ldA, ldB, ldC);
+  kernel<<<gridDim, blockDim, sharedMem>>>(dA, dB, dC, N, K, M, ldA, ldB, ldC);
   cudaEventRecord(stop);
   checkCUDAError(kernelName);
 
@@ -63,6 +63,7 @@ int main(int argc, char *argv[]) {
   cudaMallocPitch((void **)&dB, &pitchB, K * sizeof(double), M);
   cudaMallocPitch((void **)&dC, &pitchC, N * sizeof(double), M);
   checkCUDAError("cudaMallocPitch");
+
   const size_t ldA = pitchA / sizeof(double);
   const size_t ldB = pitchB / sizeof(double);
   const size_t ldC = pitchC / sizeof(double);
@@ -76,17 +77,17 @@ int main(int argc, char *argv[]) {
                cudaMemcpyHostToDevice);
   checkCUDAError("cudaMemcpy2D");
 
-  benchmarkKernel(hadamard, "hadamard", gridDim, blockDim, dA, dB, dC, N, K, M, ldA, ldB, ldC,
-                  hC);
+  benchmarkKernel(hadamard, "hadamard", gridDim, blockDim, 0, 
+                  dA, dB, dC, hC, N, K, M, ldA, ldB, ldC);
 
-  benchmarkKernel(matmat_uncoalesced, "matmat_uncoalesced", gridDim, blockDim,
-                  dA, dB, dC, N, K, M, ldA, ldB, ldC, hC);
+  benchmarkKernel(matmat_uncoalesced, "matmat_uncoalesced", gridDim, blockDim, 0,
+                  dA, dB, dC, hC, N, K, M, ldA, ldB, ldC);
 
-  benchmarkKernel(matmat_coalesced, "matmat_coalesced", gridDim, blockDim, dA,
-                  dB, dC, N, K, M, ldA, ldB, ldC, hC);
+  benchmarkKernel(matmat_coalesced, "matmat_coalesced", gridDim, blockDim, 0,
+                  dA, dB, dC, hC, N, K, M, ldA, ldB, ldC);
                   
-  benchmarkKernel(matmat_tiled, "matmat_tiled", gridDim, blockDim, dA, dB, dC,
-                  N, K, M, ldA, ldB, ldC, hC);
+  benchmarkKernel(matmat_tiled, "matmat_tiled", gridDim, blockDim, 0, 
+                  dA, dB, dC, hC, N, K, M, ldA, ldB, ldC);
 
   free(hA);
   free(hB);
