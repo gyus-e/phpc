@@ -1,4 +1,5 @@
-#include "utils.hpp"
+#include "mat_utils.hpp"
+#include <string.h>
 #include <stdio.h>
 
 void print_mat(const double *mat, const size_t rows, const size_t cols,
@@ -9,16 +10,6 @@ void print_mat(const double *mat, const size_t rows, const size_t cols,
       printf("%.1f \t", mat[i * ld + j]);
     }
     printf("\n");
-  }
-}
-
-void init_mat_zero(double *mat, const size_t rows, const size_t cols,
-              const size_t ld) {
-  unsigned int i, j;
-  for (i = 0; i < rows; i++) {
-    for (j = 0; j < cols; j++) {
-      mat[i * ld + j] = 0.0;
-    }
   }
 }
 

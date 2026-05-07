@@ -4,17 +4,17 @@ CFLAGS = -arch=sm_89
 
 all: main.exe
 
-main.exe: main.obj utils.obj kernels.obj
-	$(CC) main.obj utils.obj kernels.obj -o main.exe $(CFLAGS)
+main.exe: main.obj mat_utils.obj mat_kernels.obj
+	$(CC) main.obj mat_utils.obj mat_kernels.obj -o main.exe $(CFLAGS)
 
-main.obj: main.cu utils.hpp kernels.hpp
+main.obj: main.cu mat_utils.hpp mat_kernels.hpp
 	$(CC) -c main.cu -o main.obj $(CFLAGS)
 
-kernels.obj: kernels.cu kernels.hpp
-	$(CC) -c kernels.cu -o kernels.obj $(CFLAGS)
+mat_kernels.obj: mat_kernels.cu mat_kernels.hpp
+	$(CC) -c mat_kernels.cu -o mat_kernels.obj $(CFLAGS)
 
-utils.obj: utils.cpp utils.hpp
-	$(CC) -c utils.cpp -o utils.obj $(CFLAGS)
+mat_utils.obj: mat_utils.cpp mat_utils.hpp
+	$(CC) -c mat_utils.cpp -o mat_utils.obj $(CFLAGS)
 
 clean:
 	rm -f *.exe *.obj *.pdb
