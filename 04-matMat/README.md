@@ -1,0 +1,52 @@
+# Hardware
+CPU: Intel Core i5-9600KF 3.70 GHz
+RAM: 16 GB DDR4
+GPU: NVIDIA GeForce RTX 4060 Ti 16GB
+
+# Problem size
+MATRIX SIZE: 4096 x 4096
+BLOCK SIZE: 32 x 32
+GRID SIZE: 128 x 128
+
+# Times
+## 1
+hadamard time: 1.676544 ms
+matmat_uncoalesced time: 810.164246 ms
+matmat_coalesced time: 522.702820 ms
+matmat_tiled time: 421.950470 ms
+
+## 2
+hadamard time: 1.758432 ms
+matmat_uncoalesced time: 812.909546 ms
+matmat_coalesced time: 522.640442 ms
+matmat_tiled time: 421.477386 ms
+
+## 3
+hadamard time: 1.649664 ms
+matmat_uncoalesced time: 809.377808 ms
+matmat_coalesced time: 536.993774 ms
+matmat_tiled time: 426.283020 ms
+
+## 4
+hadamard time: 1.728512 ms
+matmat_uncoalesced time: 838.970398 ms
+matmat_coalesced time: 530.161682 ms
+matmat_tiled time: 424.720398 ms
+
+## 5
+hadamard time: 1.725440 ms
+matmat_uncoalesced time: 811.135803 ms
+matmat_coalesced time: 527.178772 ms
+matmat_tiled time: 426.239990 ms
+
+## 6
+hadamard time: 1.717120 ms
+matmat_uncoalesced time: 809.742310 ms
+matmat_coalesced time: 537.308105 ms
+matmat_tiled time: 429.523956 ms
+
+## 7
+hadamard time: 1.665024 ms
+matmat_uncoalesced time: 816.108521 ms
+matmat_coalesced time: 528.633850 ms
+matmat_tiled time: 426.103821 ms 
