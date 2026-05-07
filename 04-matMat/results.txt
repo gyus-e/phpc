@@ -1,0 +1,23 @@
+CPU: Intel Core i5 9600KF
+GPU: Nvidia RTX 4060 Ti 16GB
+RAM: 16GB DDR4
+
+PS F:\Projects\phpc\04-matMat> ./main.exe
+matmat_uncoalesced time: 3155.415039 ms
+matmat_coalesced time: 427.378693 ms
+
+PS F:\Projects\phpc\04-matMat> ./main.exe
+matmat_uncoalesced time: 3347.429443 ms
+matmat_coalesced time: 409.614532 ms
+
+PS F:\Projects\phpc\04-matMat> ./main.exe
+matmat_uncoalesced time: 2995.077148 ms
+matmat_coalesced time: 415.887360 ms
+
+PS F:\Projects\phpc\04-matMat> ./main.exe
+matmat_uncoalesced time: 2972.531738 ms
+matmat_coalesced time: 410.105865 ms
+
+PS F:\Projects\phpc\04-matMat> ./main.exe
+matmat_uncoalesced time: 3198.362549 ms
+matmat_coalesced time: 430.536713 ms
